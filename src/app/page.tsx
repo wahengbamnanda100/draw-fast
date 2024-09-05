@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client'
 
+import { CameraFeedShapeUtil } from '@/components/CameraFeedShapeUtil'
 import { LiveImageShape, LiveImageShapeUtil } from '@/components/LiveImageShapeUtil'
 import { LiveImageTool, MakeLiveButton } from '@/components/LiveImageTool'
 import { LockupLink } from '@/components/LockupLink'
@@ -50,7 +51,7 @@ const overrides: TLUiOverrides = {
 	},
 }
 
-const shapeUtils = [LiveImageShapeUtil]
+const shapeUtils = [LiveImageShapeUtil, CameraFeedShapeUtil]
 const tools = [LiveImageTool]
 
 export default function Home() {

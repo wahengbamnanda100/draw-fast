@@ -2,7 +2,7 @@ import { LiveImageShape } from '@/components/LiveImageShapeUtil'
 import * as fal from '@fal-ai/serverless-client'
 import { RealtimeConnection } from '@fal-ai/serverless-client/src/realtime'
 import { Editor, TLShape, TLShapeId, getHashForObject, useEditor } from '@tldraw/tldraw'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 
 type LCMInput = {
 	prompt: string
@@ -117,12 +117,17 @@ export function LiveImageProvider({ children }: { children: React.ReactNode }) {
 export function useLiveImage(shapeId: TLShapeId) {
 	const editor = useEditor()
 	const connection = useContext(LiveImageContext)
+	const intervalRef = useRef<NodeJS.Timeout | null>(null)
 	if (!connection) throw new Error('Missing LiveImageProvider')
 	const send = connection.send
 	if (!send) throw new Error('Missing LiveImageProvider')
 	useEffect(() => {
+		// if (!document) return
 		const _canvas = document.createElement('canvas')
 		const _ctx = _canvas.getContext('2d')!
+		if (intervalRef.current) {
+			clearInterval(intervalRef.current)
+		}
 
 		let prevHash = ''
 		let prevPrompt = ''
@@ -134,7 +139,7 @@ export function useLiveImage(shapeId: TLShapeId) {
 			const frame = editor.getShape<LiveImageShape>(shapeId)!
 			const hash = getHashForObject([...shapes])
 			const frameName = frame.props.name
-			if (hash === prevHash && frameName === prevPrompt) return
+			// if (hash === prevHash && frameName === prevPrompt) return
 
 			startedIteration += 1
 			const iteration = startedIteration
@@ -183,7 +188,7 @@ export function useLiveImage(shapeId: TLShapeId) {
 					// const prompt = frameName ? frameName : 'A person'
 
 					const prompt = frameName
-						? frameName + ' hd award-winning impressive'
+						? frameName + ''
 						: 'A random image that is safe for work and not surprising—something boring like a city or shoe watercolor'
 
 					// downloadDataURLAsFile(imageDataUri, 'image.png')
@@ -192,16 +197,18 @@ export function useLiveImage(shapeId: TLShapeId) {
 						image: data,
 						seed: 42,
 						enable_safety_checks: false,
-						guidance_scale: 1.0,
+						guidance_scale: 1,
 						request_id: shapeId,
+						negative_prompt: 'woman child human girl man person face',
+						// temperature: 0,
 
-						//--- FOR DOODLING ON IMAGES ---
 						// strength: 0.666666,
+						// strength: 0.6666666666666666,
+						num_inference_steps: 2,
 						// num_inference_steps: 3,
 
-						//--- FOR DRAWING FROM SCRATCH ---
-						strength: 0.6666666666666667,
-						num_inference_steps: 3,
+						strength: 0.6666666677,
+						// strength: 0.999999999,
 
 						// strength: 0.7,
 						// num_inference_steps: 3,
@@ -227,12 +234,14 @@ export function useLiveImage(shapeId: TLShapeId) {
 		// 	}, 16)
 		// }
 
-		const interval = setInterval(() => {
+		intervalRef.current = setInterval(() => {
 			updateDrawing()
-		}, 64)
+		}, 128)
 		// editor.on('update-drawings' as any, requestUpdate)
 		return () => {
-			clearInterval(interval)
+			if (intervalRef.current) {
+				clearInterval(intervalRef.current)
+			}
 			// editor.off('update-drawings' as any, requestUpdate)
 		}
 	}, [editor, shapeId, send])
