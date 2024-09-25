@@ -1,14 +1,13 @@
 import { LiveImageShape } from '@/components/LiveImageShapeUtil'
-import { blobToDataUri } from '@/utils/blob'
 import * as fal from '@fal-ai/serverless-client'
 import {
 	AssetRecordType,
 	Editor,
+	FileHelpers,
 	TLShape,
 	TLShapeId,
+	exportToBlob,
 	getHashForObject,
-	getSvgAsImage,
-	rng,
 	useEditor,
 } from '@tldraw/tldraw'
 import { createContext, useContext, useEffect, useState } from 'react'
@@ -141,56 +140,39 @@ export function useLiveImage(
 			prevPrompt = frame.props.name
 
 			try {
-				const svg = await editor.getSvg([...shapes], {
-					background: true,
-					padding: 0,
-					darkMode: editor.user.getIsDarkMode(),
-					bounds: editor.getShapePageBounds(shapeId)!,
+				const blob = await exportToBlob({
+					editor,
+					ids: shapes.map((shape) => shape.id),
+					format: 'png',
+					opts: {
+						scale: 512 / frame.props.w,
+						bounds: editor.getShapePageBounds(shapeId)!,
+						darkMode: editor.user.getIsDarkMode(),
+						background: true,
+						padding: 0,
+					},
 				})
-				// cancel if stale:
+
 				if (iteration <= finishedIteration) return
 
-				if (!svg) {
-					console.error('No SVG')
-					updateImage(editor, frame.id, '')
-					return
-				}
-
-				const image = await getSvgAsImage(svg, editor.environment.isSafari, {
-					type: 'png',
-					quality: 1,
-					scale: 512 / frame.props.w,
-				})
-				// cancel if stale:
-				if (iteration <= finishedIteration) return
-
-				if (!image) {
-					console.error('No image')
-					updateImage(editor, frame.id, '')
-					return
-				}
+				const imageUrl = await FileHelpers.blobToDataUrl(blob)
 
 				const prompt = frameName
 					? frameName + ' hd award-winning impressive'
 					: 'A random image that is safe for work and not surprising—something boring like a city or shoe watercolor'
 
-				const imageDataUri = await blobToDataUri(image)
-
 				// cancel if stale:
 				if (iteration <= finishedIteration) return
 
-				// downloadDataURLAsFile(imageDataUri, 'image.png')
-
-				const random = rng(shapeId)
-
 				const result = await fetchImage!({
 					prompt,
-					image_url: imageDataUri,
+					image_url: imageUrl,
 					sync_mode: true,
 					strength: 0.65,
-					seed: 42, // TODO make this configurable in the UI
+					seed: 42,
 					enable_safety_checks: false,
 				})
+
 				// cancel if stale:
 				if (iteration <= finishedIteration) return
 
