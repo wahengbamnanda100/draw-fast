@@ -88,7 +88,7 @@ export default function Home() {
 			<main className="tldraw-wrapper">
 				<div className="tldraw-wrapper__inner">
 					<Tldraw
-						persistenceKey="tldraw-fal"
+						persistenceKey="draw-faster"
 						onMount={onEditorMount}
 						shapeUtils={shapeUtils}
 						tools={tools}
