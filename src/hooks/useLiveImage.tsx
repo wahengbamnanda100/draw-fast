@@ -1,4 +1,5 @@
 import { LiveImageShape } from '@/components/LiveImageShapeUtil'
+import { fastGetSvgAsImage } from '@/utils/screenshot'
 import * as fal from '@fal-ai/serverless-client'
 import {
 	AssetRecordType,
@@ -6,7 +7,6 @@ import {
 	FileHelpers,
 	TLShape,
 	TLShapeId,
-	exportToBlob,
 	getHashForObject,
 	useEditor,
 } from '@tldraw/tldraw'
@@ -56,7 +56,9 @@ export function LiveImageProvider({
 			onError: (error) => {
 				console.error(error)
 				// force re-connect
-				setCount((count) => count + 1)
+				setTimeout(() => {
+					setCount((count) => count + 1)
+				}, 500)
 			},
 			onResult: (result) => {
 				if (result.images && result.images[0]) {
@@ -140,29 +142,48 @@ export function useLiveImage(
 			prevPrompt = frame.props.name
 
 			try {
-				const blob = await exportToBlob({
-					editor,
-					ids: shapes.map((shape) => shape.id),
-					format: 'png',
-					opts: {
-						scale: 512 / frame.props.w,
-						bounds: editor.getShapePageBounds(shapeId)!,
-						darkMode: editor.user.getIsDarkMode(),
-						background: true,
-						padding: 0,
-					},
+				const svgStringResult = await editor.getSvgString([...shapes], {
+					background: true,
+					padding: 0,
+					darkMode: editor.user.getIsDarkMode(),
+					bounds: editor.getShapePageBounds(shapeId)!,
+					scale: 512 / frame.props.w,
+				})
+
+				if (!svgStringResult) {
+					console.warn('No SVG')
+					updateImage(editor, frame.id, null)
+					return
+				}
+
+				const svgString = svgStringResult.svg
+
+				// cancel if stale:
+				if (iteration <= finishedIteration) return
+
+				const blob = await fastGetSvgAsImage(svgString, {
+					type: 'jpeg',
+					quality: 0.5,
+					width: svgStringResult.width,
+					height: svgStringResult.height,
 				})
 
 				if (iteration <= finishedIteration) return
 
+				if (!blob) {
+					console.warn('No Blob')
+					updateImage(editor, frame.id, null)
+					return
+				}
+
 				const imageUrl = await FileHelpers.blobToDataUrl(blob)
+
+				// cancel if stale:
+				if (iteration <= finishedIteration) return
 
 				const prompt = frameName
 					? frameName + ' hd award-winning impressive'
 					: 'A random image that is safe for work and not surprising—something boring like a city or shoe watercolor'
-
-				// cancel if stale:
-				if (iteration <= finishedIteration) return
 
 				const result = await fetchImage!({
 					prompt,
