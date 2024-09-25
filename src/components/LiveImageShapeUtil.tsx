@@ -2,7 +2,6 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import {
 	AssetRecordType,
-	Button,
 	Geometry2d,
 	getDefaultColorTheme,
 	Rectangle2d,
@@ -10,9 +9,10 @@ import {
 	ShapeUtil,
 	SVGContainer,
 	TLBaseShape,
+	TldrawUiButton,
+	TldrawUiButtonIcon,
 	TLGroupShape,
-	TLOnResizeEndHandler,
-	TLOnResizeHandler,
+	TLResizeInfo,
 	TLShape,
 	TLShapeId,
 	toDomPrecision,
@@ -60,7 +60,6 @@ export class LiveImageShapeUtil extends ShapeUtil<LiveImageShape> {
 	static type = 'live-image' as any
 
 	override canBind = () => false
-	override canUnmount = () => false
 	override canEdit = () => true
 	override isAspectRatioLocked = () => true
 
@@ -116,7 +115,7 @@ export class LiveImageShapeUtil extends ShapeUtil<LiveImageShape> {
 		}
 	}
 
-	override onResizeEnd: TLOnResizeEndHandler<LiveImageShape> = (shape) => {
+	override onResizeEnd(shape: LiveImageShape) {
 		const bounds = this.editor.getShapePageBounds(shape)!
 		const children = this.editor.getSortedChildIdsForParent(shape.id)
 
@@ -134,7 +133,7 @@ export class LiveImageShapeUtil extends ShapeUtil<LiveImageShape> {
 		}
 	}
 
-	override onResize: TLOnResizeHandler<any> = (shape, info) => {
+	override onResize(shape: LiveImageShape, info: TLResizeInfo<LiveImageShape>) {
 		return resizeBox(shape, info)
 	}
 
@@ -192,9 +191,8 @@ export class LiveImageShapeUtil extends ShapeUtil<LiveImageShape> {
 						}}
 					/>
 				)}
-				<Button
+				<TldrawUiButton
 					type="icon"
-					icon={shape.props.overlayResult ? 'chevron-right' : 'chevron-left'}
 					style={{
 						position: 'absolute',
 						top: -4,
@@ -213,7 +211,9 @@ export class LiveImageShapeUtil extends ShapeUtil<LiveImageShape> {
 							props: { overlayResult: !shape.props.overlayResult },
 						})
 					}}
-				/>
+				>
+					<TldrawUiButtonIcon icon={shape.props.overlayResult ? 'chevron-right' : 'chevron-left'} />
+				</TldrawUiButton>
 			</>
 		)
 	}

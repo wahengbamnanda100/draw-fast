@@ -1,14 +1,13 @@
 import { LiveImageShape } from '@/components/LiveImageShapeUtil'
-import { blobToDataUri } from '@/utils/blob'
+import { fastGetSvgAsImage } from '@/utils/screenshot'
 import * as fal from '@fal-ai/serverless-client'
 import {
 	AssetRecordType,
 	Editor,
+	FileHelpers,
 	TLShape,
 	TLShapeId,
 	getHashForObject,
-	getSvgAsImage,
-	rng,
 	useEditor,
 } from '@tldraw/tldraw'
 import { createContext, useContext, useEffect, useState } from 'react'
@@ -57,7 +56,9 @@ export function LiveImageProvider({
 			onError: (error) => {
 				console.error(error)
 				// force re-connect
-				setCount((count) => count + 1)
+				setTimeout(() => {
+					setCount((count) => count + 1)
+				}, 500)
 			},
 			onResult: (result) => {
 				if (result.images && result.images[0]) {
@@ -141,56 +142,58 @@ export function useLiveImage(
 			prevPrompt = frame.props.name
 
 			try {
-				const svg = await editor.getSvg([...shapes], {
+				const svgStringResult = await editor.getSvgString([...shapes], {
 					background: true,
 					padding: 0,
 					darkMode: editor.user.getIsDarkMode(),
 					bounds: editor.getShapePageBounds(shapeId)!,
-				})
-				// cancel if stale:
-				if (iteration <= finishedIteration) return
-
-				if (!svg) {
-					console.error('No SVG')
-					updateImage(editor, frame.id, '')
-					return
-				}
-
-				const image = await getSvgAsImage(svg, editor.environment.isSafari, {
-					type: 'png',
-					quality: 1,
 					scale: 512 / frame.props.w,
 				})
+
+				if (!svgStringResult) {
+					console.warn('No SVG')
+					updateImage(editor, frame.id, null)
+					return
+				}
+
+				const svgString = svgStringResult.svg
+
 				// cancel if stale:
 				if (iteration <= finishedIteration) return
 
-				if (!image) {
-					console.error('No image')
-					updateImage(editor, frame.id, '')
+				const blob = await fastGetSvgAsImage(svgString, {
+					type: 'jpeg',
+					quality: 0.5,
+					width: svgStringResult.width,
+					height: svgStringResult.height,
+				})
+
+				if (iteration <= finishedIteration) return
+
+				if (!blob) {
+					console.warn('No Blob')
+					updateImage(editor, frame.id, null)
 					return
 				}
+
+				const imageUrl = await FileHelpers.blobToDataUrl(blob)
+
+				// cancel if stale:
+				if (iteration <= finishedIteration) return
 
 				const prompt = frameName
 					? frameName + ' hd award-winning impressive'
 					: 'A random image that is safe for work and not surprising—something boring like a city or shoe watercolor'
 
-				const imageDataUri = await blobToDataUri(image)
-
-				// cancel if stale:
-				if (iteration <= finishedIteration) return
-
-				// downloadDataURLAsFile(imageDataUri, 'image.png')
-
-				const random = rng(shapeId)
-
 				const result = await fetchImage!({
 					prompt,
-					image_url: imageDataUri,
+					image_url: imageUrl,
 					sync_mode: true,
 					strength: 0.65,
-					seed: 42, // TODO make this configurable in the UI
+					seed: 42,
 					enable_safety_checks: false,
 				})
+
 				// cancel if stale:
 				if (iteration <= finishedIteration) return
 
@@ -226,7 +229,10 @@ export function useLiveImage(
 }
 
 function updateImage(editor: Editor, shapeId: TLShapeId, url: string | null) {
-	const shape = editor.getShape<LiveImageShape>(shapeId)!
+	const shape = editor.getShape<LiveImageShape>(shapeId)
+	if (!shape) {
+		return
+	}
 	const id = AssetRecordType.createId(shape.id.split(':')[1])
 
 	const asset = editor.getAsset(id)
