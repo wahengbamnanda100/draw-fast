@@ -2,8 +2,7 @@
 'use client'
 
 import { LiveImageShape, LiveImageShapeUtil } from '@/components/LiveImageShapeUtil'
-import { LiveImageTool,MakeLiveButton } from '@/components/LiveImageTool'
-import { LockupLink } from '@/components/LockupLink'
+import { LiveImageTool, MakeLiveButton } from '@/components/LiveImageTool'
 import { LiveImageProvider } from '@/hooks/useLiveImage'
 import * as fal from '@fal-ai/serverless-client'
 import {
@@ -12,7 +11,6 @@ import {
 	Editor,
 	TLUiOverrides,
 	Tldraw,
-	toolbarItem,
 	track,
 	useEditor,
 } from '@tldraw/tldraw'
@@ -39,18 +37,18 @@ const overrides: TLUiOverrides = {
 		}
 		return tools
 	},
-	toolbar(_app, toolbar, { tools }) {
-		const frameIndex = toolbar.findIndex((item) => item.id === 'frame')
-		if (frameIndex !== -1) toolbar.splice(frameIndex, 1)
-		const highlighterIndex = toolbar.findIndex((item) => item.id === 'highlight')
-		if (highlighterIndex !== -1) {
-			const highlighterItem = toolbar[highlighterIndex]
-			toolbar.splice(highlighterIndex, 1)
-			toolbar.splice(3, 0, highlighterItem)
-		}
-		toolbar.splice(2, 0, toolbarItem(tools.liveImage))
-		return toolbar
-	},
+	// toolbar(_app, toolbar, { tools }) {
+	// 	const frameIndex = toolbar.findIndex((item) => item.id === 'frame')
+	// 	if (frameIndex !== -1) toolbar.splice(frameIndex, 1)
+	// 	const highlighterIndex = toolbar.findIndex((item) => item.id === 'highlight')
+	// 	if (highlighterIndex !== -1) {
+	// 		const highlighterItem = toolbar[highlighterIndex]
+	// 		toolbar.splice(highlighterIndex, 1)
+	// 		toolbar.splice(3, 0, highlighterItem)
+	// 	}
+	// 	toolbar.splice(2, 0, toolbarItem(tools.liveImage))
+	// 	return toolbar
+	// },
 }
 
 const shapeUtils = [LiveImageShapeUtil]
@@ -82,7 +80,7 @@ export default function Home() {
 			})
 		}
 
-		editor.setStyleForNextShapes(DefaultSizeStyle, 'xl', { ephemeral: true })
+		editor.setStyleForNextShapes(DefaultSizeStyle, 'xl')
 	}
 
 	return (
@@ -90,15 +88,16 @@ export default function Home() {
 			<main className="tldraw-wrapper">
 				<div className="tldraw-wrapper__inner">
 					<Tldraw
-						persistenceKey="tldraw-fal"
+						persistenceKey="draw-fast"
 						onMount={onEditorMount}
 						shapeUtils={shapeUtils}
 						tools={tools}
-						shareZone={<MakeLiveButton />}
+						components={{
+							SharePanel: MakeLiveButton,
+						}}
 						overrides={overrides}
 					>
 						<SneakySideEffects />
-						<LockupLink />
 						<LiveImageAssets />
 					</Tldraw>
 				</div>
