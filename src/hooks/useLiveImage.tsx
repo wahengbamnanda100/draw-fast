@@ -229,7 +229,10 @@ export function useLiveImage(
 }
 
 function updateImage(editor: Editor, shapeId: TLShapeId, url: string | null) {
-	const shape = editor.getShape<LiveImageShape>(shapeId)!
+	const shape = editor.getShape<LiveImageShape>(shapeId)
+	if (!shape) {
+		return
+	}
 	const id = AssetRecordType.createId(shape.id.split(':')[1])
 
 	const asset = editor.getAsset(id)
